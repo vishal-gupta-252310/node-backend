@@ -7,6 +7,7 @@
 // };
 /**
  * To handle async functions in express
+ * @param {func} func
  */
 const asyncHandler = (func) => async (req, res, next) => {
   try {
