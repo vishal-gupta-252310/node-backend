@@ -70,7 +70,13 @@ const userRegister = asyncHandler(async (req, res) => {
   // 6. check user created if create then return res
   return res
     .status(201)
-    .json(new ApiResponse(200, userModelMessages?.user_created_successfully));
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.user_created_successfully,
+        createdUser
+      )
+    );
 });
 
 export { userRegister };
