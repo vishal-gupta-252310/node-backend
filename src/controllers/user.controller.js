@@ -5,7 +5,13 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFileOnCloudinary } from "../utils/FileUploadWithCloudinary.js";
-import { HaveValue, IsObjectHaveValue } from "../utils/Helper.js";
+import {
+  ArrayHaveValues,
+  HaveValue,
+  IsDefined,
+  IsTrue,
+  validateEmail
+} from "../utils/Helper.js";
 
 const userRegister = asyncHandler(async (req, res) => {
   // 1. to get the data from request body
@@ -22,30 +28,40 @@ const userRegister = asyncHandler(async (req, res) => {
     $or: [{ email }, { username }]
   });
 
-  if (HaveValue(userExisted)) {
+  if (userExisted) {
     throw new ApiError(409, userModelMessages?.user_already_exist);
   }
 
-  // 3. check for images, check for profile_pic\
+  if (!IsTrue(validateEmail(email))) {
+    throw new ApiError(400, userModelMessages?.email_validation_msg);
+  }
+
+  // 3. check for images, check for profile_pic
   const avatarLocalPath = req?.files?.avatar[0]?.path;
 
   if (!HaveValue(avatarLocalPath)) {
     throw new ApiError(400, userModelMessages?.avatar_file_required);
   }
 
-  const coverImageLocalPath = req?.files?.coverImage[0]?.path || "";
-  const avatarCloudinaryUrl =
-    await uploadFileOnCloudinary(avatarLocalPath)?.url;
+  const coverImageLocalPath = "";
 
-  if (!HaveValue(avatarCloudinaryUrl)) {
+  if (
+    IsDefined(req?.files?.coverImage) &&
+    ArrayHaveValues(req?.files?.coverImage)
+  ) {
+    coverImageLocalPath = req?.files?.coverImage[0]?.path;
+  }
+
+  const avatarImageCloudinary = await uploadFileOnCloudinary(avatarLocalPath);
+
+  if (!avatarImageCloudinary) {
     throw new ApiError(400, userModelMessages?.failed_to_upload_file);
   }
 
-  let coverImageCloudinaryUrl = "";
+  let coverImageCloudinary = "";
 
   if (HaveValue(coverImageLocalPath)) {
-    coverImageCloudinaryUrl =
-      await uploadFileOnCloudinary(coverImageLocalPath)?.url;
+    coverImageCloudinary = await uploadFileOnCloudinary(coverImageLocalPath);
   }
 
   // 5. create user object to store in db
@@ -54,8 +70,8 @@ const userRegister = asyncHandler(async (req, res) => {
     username: username.toLowerCase(),
     password,
     fullName,
-    avatar: avatarCloudinaryUrl,
-    coverImage: coverImageCloudinaryUrl
+    avatar: avatarImageCloudinary?.url,
+    coverImage: coverImageCloudinary?.url || ""
   });
 
   // 5. remove password and refresh token from response
@@ -63,7 +79,7 @@ const userRegister = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
-  if (!IsObjectHaveValue(createdUser)) {
+  if (createdUser) {
     new ApiError(500, userModelMessages?.failed_to_create_user);
   }
 

@@ -5,5 +5,6 @@ export const userModelMessages = {
   failed_to_upload_file:
     "Failed to upload avatar file please try again after some time.",
   failed_to_create_user: "Something went wrong while registering the user.",
-  user_created_successfully: "User Registered Successfully."
+  user_created_successfully: "User Registered Successfully.",
+  email_validation_msg: "Email is not valid please try with different email."
 };

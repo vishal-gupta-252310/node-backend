@@ -1,6 +1,7 @@
 // packages
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import { ApiError } from "./ApiError.js";
 
 // to set cloudinary configurations
 cloudinary.config({
@@ -17,10 +18,11 @@ const uploadFileOnCloudinary = async (localPathUrl) => {
       resource_type: "auto"
     });
 
-    console.log("File Uploaded successfully", responseResult);
+    fs.unlinkSync(localPathUrl);
     return responseResult;
   } catch (error) {
     fs.unlinkSync(localPathUrl);
+    throw new ApiError(500, "Failed to upload file");
   }
 };
 
