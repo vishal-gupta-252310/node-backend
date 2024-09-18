@@ -1,7 +1,16 @@
 export const GetTrimmedData = (data) => {
-  if (!IsString(data)) return "";
+  if (
+    !IsStrictlyEqual(data, "") &&
+    !IsStrictlyEqual(data, undefined) &&
+    !IsStrictlyEqual(data, null) &&
+    !IsStrictlyEqual(data, "undefined") &&
+    !IsStrictlyEqual(data, "null") &&
+    IsStrictlyEqual(typeof data, "string")
+  ) {
+    return data?.trim();
+  }
 
-  return data?.trim();
+  return data;
 };
 
 export const IsStrictlyEqual = (a, b) => {
@@ -17,25 +26,31 @@ export const HaveValue = (data) => {
 
   // Return false for empty strings, undefined, null, or their string representations
   return (
-    trimmedValue !== "" &&
-    trimmedValue !== undefined &&
-    trimmedValue !== null &&
-    trimmedValue !== "undefined" &&
-    trimmedValue !== "null"
+    !IsStrictlyEqual(trimmedValue, "") &&
+    !IsStrictlyEqual(trimmedValue, undefined) &&
+    !IsStrictlyEqual(trimmedValue, null) &&
+    !IsStrictlyEqual(trimmedValue, "undefined") &&
+    !IsStrictlyEqual(trimmedValue, "null")
   );
 };
 
 export const IsObject = (data) => {
-  return IsStrictlyEqual(typeof data, "object");
+  if (
+    !IsStrictlyEqual(typeof data, "null") &&
+    !IsStrictlyEqual(typeof data, "undefined") &&
+    !IsStrictlyEqual(data, undefined) &&
+    !IsStrictlyEqual(data, null) &&
+    IsStrictlyEqual(typeof data, "object")
+  ) {
+    return true;
+  }
+  return false;
 };
 
-export const IsObjectHaveValue = (data) => {
-  if (!HaveValue(data)) return false;
-
+export const IsObjectHaveValues = (data) => {
   if (!IsObject(data)) return false;
 
-  const dataWithKeys = Object.keys(data);
-  return dataWithKeys?.length > 0;
+  return Object.keys(data)?.length > 0;
 };
 
 export const validateEmail = (email) => {
