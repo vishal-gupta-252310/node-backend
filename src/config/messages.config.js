@@ -27,5 +27,12 @@ export const userModelMessages = {
   refreshToken: {
     access_token_refreshed: "Access token refreshed successfully",
     refresh_token_expired_or_use: "Refresh token expired or used."
-  }
+  },
+  change_password: {
+    change_password_msg:
+      "The existing password and entered password does not match.",
+    both_password_is_required: "Old and new password both is required.",
+    password_changed_successfully: "Your password changed successfully."
+  },
+  logged_user_msg: "Current user fetched successfully"
 };

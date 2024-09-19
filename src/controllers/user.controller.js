@@ -245,10 +245,56 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
+const changePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!HaveValue(oldPassword) || !HaveValue(newPassword)) {
+    throw new ApiError(
+      401,
+      userModelMessages?.change_password?.both_password_is_required
+    );
+  }
+
+  const user = await User.findById(req?.user?._id);
+  const isPasswordMatch = await user.isPasswordCorrect(oldPassword);
+
+  if (!IsTrue(isPasswordMatch)) {
+    throw new ApiError(
+      401,
+      userModelMessages?.change_password?.change_password_msg
+    );
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.change_password?.password_changed_successfully
+      )
+    );
+});
+
+const getLoggedUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.change_password?.password_changed_successfully
+      )
+    );
+});
+
 export {
   userRegister,
   loginUser,
   generateAccessAndRefreshTokens,
   logoutUser,
-  refreshAccessToken
+  refreshAccessToken,
+  changePassword,
+  getLoggedUser
 };
