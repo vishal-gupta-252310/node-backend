@@ -91,3 +91,9 @@ export const IsDefined = (data = {}, key = "") => {
 
   return data.hasOwnProperty(key);
 };
+
+export const GetObjectCopy = (data) => {
+  if (!IsObject && !IsObjectHaveValues(data)) return {};
+
+  return JSON.parse(JSON.stringify(data));
+};

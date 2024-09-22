@@ -8,6 +8,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFileOnCloudinary } from "../utils/FileUploadWithCloudinary.js";
 import {
   ArrayHaveValues,
+  GetObjectCopy,
   HaveValue,
   IsDefined,
   IsObjectHaveValues,
@@ -284,7 +285,242 @@ const getLoggedUser = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        userModelMessages?.change_password?.password_changed_successfully
+        userModelMessages?.change_password?.password_changed_successfully,
+        req.user
+      )
+    );
+});
+
+const updateDetails = asyncHandler(async (req, res) => {
+  const { email, fullName } = req.body;
+
+  if (!HaveValue(email) && !HaveValue(fullName)) {
+    throw new ApiError(400, userModelMessages?.update?.required_fields);
+  }
+
+  const dataToUpdate = {};
+
+  if (HaveValue(email) && !IsTrue(validateEmail(email))) {
+    throw new ApiError(400, userModelMessages?.register?.email_validation_msg);
+  }
+
+  dataToUpdate.email = email;
+
+  if (HaveValue(fullName)) {
+    dataToUpdate.fullName = fullName;
+  }
+
+  const updatedUSer = await User.findByIdAndUpdate(
+    req?.user?._id,
+    {
+      $set: { ...GetObjectCopy(dataToUpdate) }
+    },
+    { updated: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, userModelMessages?.update?.user_updated, updatedUSer)
+    );
+});
+
+const updateLoggedUserAvatar = asyncHandler(async (req, res) => {
+  if (!IsDefined(req, "file")) {
+    throw new ApiError(400, userModelMessages?.register?.avatar_file_required);
+  }
+
+  const localPathAvatar = req?.file?.path;
+
+  const cloudinaryAvatarFile = await uploadFileOnCloudinary(localPathAvatar);
+
+  if (!IsObjectHaveValues(cloudinaryAvatarFile)) {
+    throw new ApiError(500, userModelMessages?.register?.failed_to_upload_file);
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req?.user?._id,
+    {
+      $set: {
+        avatar: cloudinaryAvatarFile?.url
+      }
+    },
+    { updated: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.update?.avatar_updated_successfully,
+        { user }
+      )
+    );
+});
+
+const updateLoggedUserCoverImage = asyncHandler(async (req, res) => {
+  if (!IsDefined(req, "file")) {
+    throw new ApiError(
+      400,
+      userModelMessages?.register?.coverImage_file_required
+    );
+  }
+
+  const localPathCoverImage = req?.file?.path;
+
+  const cloudinaryCoverImageFile =
+    await uploadFileOnCloudinary(localPathCoverImage);
+
+  if (!IsObjectHaveValues(cloudinaryCoverImageFile)) {
+    throw new ApiError(500, userModelMessages?.register?.failed_to_upload_file);
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req?.user?._id,
+    {
+      $set: {
+        coverImage: cloudinaryCoverImageFile?.url
+      }
+    },
+    { updated: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.update?.cover_image_updated_successfully,
+        { user }
+      )
+    );
+});
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  if (!HaveValue(username)) {
+    throw new ApiError(400, userModelMessages?.register?.username_required);
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase()
+      }
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers"
+      }
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo"
+      }
+    },
+    {
+      $addFields: {
+        subscribedToCount: {
+          $size: "$subscribedTo"
+        },
+        subscribersCount: {
+          $size: "$subscribers"
+        },
+        isChannelSubscribed: {
+          $cond: {
+            if: { $in: [req?.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false
+          }
+        }
+      }
+    },
+    {
+      $channel: {
+        username: 1,
+        fullName: 1,
+        email: 1,
+        coverImage: 1,
+        avatar: 1,
+        subscribedToCount: 1,
+        subscribersCount: 1,
+        isChannelSubscribed: 1,
+        createdAt: 1
+      }
+    }
+  ]);
+
+  if (!ArrayHaveValues(channel)) {
+    throw new ApiError(404, userModelMessages?.channel?.channel_not_found);
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.channel?.channel_details_fetched,
+        channel[0]
+      )
+    );
+});
+
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req?.user?._id)
+      }
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: owner
+            }
+          },
+          {
+            $project: {
+              fullName: 1,
+              username: 1,
+              avatar: 1
+            }
+          },
+          {
+            addFields: {
+              owner: {
+                $first: "owner"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userModelMessages?.watch_history?.watch_history_msg,
+        user.watchHistory[0]
       )
     );
 });
@@ -296,5 +532,10 @@ export {
   logoutUser,
   refreshAccessToken,
   changePassword,
-  getLoggedUser
+  getLoggedUser,
+  updateDetails,
+  updateLoggedUserAvatar,
+  updateLoggedUserCoverImage,
+  getUserChannelProfile,
+  getUserWatchHistory
 };
